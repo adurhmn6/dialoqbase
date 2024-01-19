@@ -1,0 +1,57 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@500&display=swap");
+
+* {
+  font-family: "Inter", sans-serif !important;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.scroll-to-bottom {
+  position: relative;
+}
+
+.rscroll-to-bottom {
+  height: 100%;
+  overflow-y: auto;
+  width: 100%;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+@media (max-width: 720px) {
+  pre {
+    width: calc(100vw - 110px);
+  }
+}
+
+pre:has(div.code) {
+  padding: 0;
+  margin: 0;
+}
+
+markdown-processing {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* make focus 0 without any border */
+.ant-select-selection-search-input {
+  border: none !important;
+  box-shadow: none !important;
+}

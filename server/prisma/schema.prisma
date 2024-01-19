@@ -1,0 +1,215 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector(schema: "public")]
+}
+
+model Bot {
+  id                          String           @id @default(cuid())
+  publicId                    String           @unique @default(uuid())
+  name                        String
+  user_id                     Int?
+  User                        User?            @relation(fields: [user_id], references: [user_id])
+  description                 String?
+  createdAt                   DateTime         @default(now())
+  temperature                 Float            @default(0.7)
+  model                       String           @default("gpt-3.5-turbo")
+  provider                    String           @default("openai")
+  embedding                   String           @default("openai")
+  streaming                   Boolean          @default(false)
+  showRef                     Boolean          @default(false)
+  questionGeneratorPrompt     String           @default("Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.   Chat History: {chat_history} Follow Up Input: {question} Standalone question:")
+  qaPrompt                    String           @default("You are a helpful AI assistant. Use the following pieces of context to answer the question at the end. If you don't know the answer, just say you don't know. DO NOT try to make up an answer. If the question is not related to the context, politely respond that you are tuned to only answer questions that are related to the context.  {context}  Question: {question} Helpful answer in markdown:")
+  voice_to_text_type          String           @default("web_api")
+  text_to_voice_enabled       Boolean          @default(false)
+  text_to_voice_type          String           @default("web_api")
+  text_to_voice_type_metadata Json             @default("{}") @db.Json
+  use_hybrid_search           Boolean          @default(false)
+  haveDataSourcesBeenAdded    Boolean          @default(false)
+  use_rag                     Boolean          @default(false)
+  bot_protect                 Boolean          @default(false)
+  bot_api_key                 String?
+  bot_model_api_key           String?
+  options                     Json?            @default("{}") @db.Json
+  BotAppearance               BotAppearance[]
+  document                    BotDocument[]
+  BotIntegration              BotIntegration[]
+  BotPlayground               BotPlayground[]
+  source                      BotSource[]
+}
+
+model Agent {
+  id        String   @id @default(cuid())
+  name      String
+  initMsg   String   @default("Good day, how are you doing?")
+  prompt    String
+  user_id   Int?
+  createdAt DateTime @default(now())
+  User      User?    @relation(fields: [user_id], references: [user_id])
+}
+
+model BotSource {
+  id        String        @id @default(cuid())
+  botId     String
+  type      String        @default("website")
+  content   String?
+  location  String?
+  isPending Boolean       @default(true)
+  status    String        @default("pending")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  options   Json?         @db.Json
+  document  BotDocument[]
+  bot       Bot           @relation(fields: [botId], references: [id])
+}
+
+model BotDocument {
+  id        Int                   @id @default(autoincrement())
+  sourceId  String
+  botId     String
+  content   String
+  embedding Unsupported("vector")
+  metadata  Json
+  bot       Bot                   @relation(fields: [botId], references: [id])
+  source    BotSource             @relation(fields: [sourceId], references: [id])
+}
+
+model User {
+  user_id         Int        @id @default(autoincrement())
+  username        String     @unique
+  registerType    String     @default("email-password") // email-password google-oauth 
+  password        String
+  email           String?    @unique
+  isFirstLogin    Boolean    @default(true)
+  isAdministrator Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  bots            Bot[]
+  agents          Agent[]
+  inventory       Inventory?
+}
+
+model Inventory {
+  id                      String @id @default(uuid())
+  user_id                 Int    @unique
+  user                    User   @relation(fields: [user_id], references: [user_id])
+  purchases               Json   @default("[]")
+  total_credits_purchased Int    @default(0)
+  total_credits_spent     Int    @default(0)
+  credit_balance          Int    @default(500)
+}
+
+model DialoqbaseSettings {
+  id                    Int     @id @default(autoincrement())
+  noOfBotsPerUser       Int     @default(10)
+  allowUserToCreateBots Boolean @default(true)
+  allowUserToRegister   Boolean @default(false)
+}
+
+model BotIntegration {
+  id                                Int      @id @default(autoincrement())
+  provider                          String
+  bot_id                            String
+  identifier                        String
+  telegram_bot_token                String?
+  is_pause                          Boolean? @default(false)
+  discord_bot_token                 String?
+  discord_slash_command             String?  @default("hey")
+  discord_slash_command_description String?  @default("Use this command to get help")
+  discord_application_id            String?
+  whatsapp_access_token             String?
+  discord_show_sources              Boolean? @default(false)
+  discord_smart_label               Boolean? @default(false)
+  whatsapp_verify_token             String?
+  whatsapp_phone_number             String?
+  slack_auth_token                  String?
+  slack_signing_secret              String?
+  slack_app_token                   String?
+  Bot                               Bot      @relation(fields: [bot_id], references: [id], onDelete: Cascade)
+}
+
+model BotTelegramHistory {
+  id          Int     @id @default(autoincrement())
+  chat_id     Int?
+  new_chat_id String?
+  identifier  String?
+  human       String?
+  bot         String?
+}
+
+model BotDiscordHistory {
+  id         Int     @id @default(autoincrement())
+  chat_id    String?
+  identifier String?
+  human      String?
+  bot        String?
+}
+
+model BotAppearance {
+  id                      Int     @id @default(autoincrement())
+  bot_id                  String
+  bot_name                String
+  first_message           String
+  background_color        String?
+  chat_bot_bubble_style   Json?   @db.Json
+  chat_human_bubble_style Json?   @db.Json
+  Bot                     Bot     @relation(fields: [bot_id], references: [id], onDelete: Cascade)
+}
+
+model BotPlayground {
+  id                   String                 @id @default(uuid())
+  botId                String
+  title                String                 @default("New Chat")
+  createdAt            DateTime               @default(now())
+  Bot                  Bot                    @relation(fields: [botId], references: [id])
+  BotPlaygroundMessage BotPlaygroundMessage[]
+}
+
+model BotPlaygroundMessage {
+  id              String        @id @default(uuid())
+  botPlaygroundId String
+  type            String
+  message         String
+  isBot           Boolean       @default(false)
+  sources         Json?
+  createdAt       DateTime      @default(now())
+  botPlayground   BotPlayground @relation(fields: [botPlaygroundId], references: [id], onDelete: Cascade)
+}
+
+model BotWhatsappHistory {
+  id         Int     @id @default(autoincrement())
+  chat_id    String?
+  from       String?
+  identifier String?
+  human      String?
+  bot        String?
+}
+
+model botWebHistory {
+  id        String   @id @default(uuid())
+  bot_id    String
+  chat_id   String
+  metadata  Json?
+  sources   Json?
+  human     String?
+  bot       String?
+  createdAt DateTime @default(now())
+}
+
+model DialoqbaseModels {
+  id               Int      @id @default(autoincrement())
+  name             String?
+  model_id         String   @unique
+  model_type       String   @default("chat")
+  stream_available Boolean  @default(false)
+  model_provider   String?
+  local_model      Boolean  @default(false)
+  config           Json     @default("{}") @db.Json
+  hide             Boolean  @default(false)
+  deleted          Boolean  @default(false)
+  createdAt        DateTime @default(now())
+}
